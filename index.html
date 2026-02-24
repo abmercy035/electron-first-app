@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' https://api.openai.com; script-src 'self'; style-src 'unsafe-inline'; connect-src https://api.openai.com" />
+  <title>AI TTS Studio</title>
+  <style>
+    :root {
+      --bg: #07070f;
+      --panel: #0e0e1c;
+      --border: #00ffe722;
+      --cyan: #00ffe7;
+      --pink: #ff3399;
+      --purple: #9b59ff;
+      --yellow: #ffe600;
+      --green: #00ff88;
+      --red: #ff4455;
+      --text: #cccce0;
+      --dim: #555570;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 14px;
+      overflow-x: hidden;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px;
+      width: 100%;
+      max-width: 1060px;
+    }
+
+    header h1 {
+      font-size: 1.4rem;
+      letter-spacing: 6px;
+      color: var(--cyan);
+      text-shadow: 0 0 16px var(--cyan);
+      text-transform: uppercase;
+      flex: 1;
+    }
+
+    .api-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .api-row input {
+      background: var(--panel);
+      border: 1.5px solid var(--border);
+      color: var(--cyan);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.75rem;
+      width: 230px;
+      outline: none;
+    }
+
+    .api-row input:focus {
+      border-color: var(--cyan);
+    }
+
+    .api-label {
+      font-size: 0.6rem;
+      color: var(--dim);
+      letter-spacing: 2px;
+    }
+
+    .board {
+      width: 100%;
+      max-width: 1060px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    .full {
+      grid-column: 1/-1;
+    }
+
+    .span2 {
+      grid-column: span 2;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .panel-title {
+      font-size: 0.6rem;
+      letter-spacing: 3px;
+      color: var(--dim);
+      text-transform: uppercase;
+      width: 100%;
+      text-align: center;
+    }
+
+    textarea {
+      width: 100%;
+      height: 88px;
+      background: #090916;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      color: var(--cyan);
+      font-family: 'Courier New', monospace;
+      font-size: 0.88rem;
+      padding: 10px;
+      resize: vertical;
+      outline: none;
+    }
+
+    textarea:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 10px #00ffe733;
+    }
+
+    .ai-grid,
+    .style-grid,
+    .emo-grid,
+    .music-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      width: 100%;
+    }
+
+    .ai-chip,
+    .chip,
+    .emo-chip,
+    .music-chip {
+      padding: 8px 3px;
+      border-radius: 8px;
+      font-size: 0.62rem;
+      letter-spacing: 1px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.12s;
+      user-select: none;
+      background: #0a0a18;
+      color: var(--dim);
+    }
+
+    .ai-chip {
+      border: 1.5px solid #9b59ff33;
+    }
+
+    .ai-chip:hover {
+      border-color: var(--purple);
+      color: var(--purple);
+    }
+
+    .ai-chip.active {
+      background: #9b59ff18;
+      border-color: var(--purple);
+      color: var(--purple);
+      box-shadow: 0 0 10px #9b59ff44;
+    }
+
+    .chip {
+      border: 1.5px solid var(--border);
+    }
+
+    .chip:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    .chip.active {
+      background: #00ffe714;
+      border-color: var(--cyan);
+      color: var(--cyan);
+      box-shadow: 0 0 8px #00ffe733;
+    }
+
+    .emo-chip {
+      border: 1.5px solid #ff339922;
+    }
+
+    .emo-chip:hover {
+      border-color: var(--pink);
+      color: var(--pink);
+    }
+
+    .emo-chip.active {
+      background: #ff339914;
+      border-color: var(--pink);
+      color: var(--pink);
+      box-shadow: 0 0 8px #ff339944;
+    }
+
+    .music-chip {
+      border: 1.5px solid #ffe60022;
+    }
+
+    .music-chip:hover {
+      border-color: var(--yellow);
+      color: var(--yellow);
+    }
+
+    .music-chip.active {
+      background: #ffe60014;
+      border-color: var(--yellow);
+      color: var(--yellow);
+      box-shadow: 0 0 8px #ffe60044;
+    }
+
+    .knobs-row {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      width: 100%;
+      flex-wrap: wrap;
+    }
+
+    .knob-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .knob-label {
+      font-size: 0.58rem;
+      color: var(--dim);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .knob {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 38% 35%, #20203a, #07070f);
+      border: 2px solid var(--cyan);
+      box-shadow: 0 0 12px #00ffe733;
+      position: relative;
+      cursor: ns-resize;
+    }
+
+    .knob-dot {
+      width: 5px;
+      height: 5px;
+      background: var(--cyan);
+      border-radius: 50%;
+      position: absolute;
+      top: 5px;
+      left: 50%;
+      transform: translateX(-50%);
+      box-shadow: 0 0 6px var(--cyan);
+    }
+
+    .knob-val {
+      font-size: 0.72rem;
+      color: var(--cyan);
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .slider-label {
+      font-size: 0.58rem;
+      color: var(--dim);
+      letter-spacing: 1px;
+      min-width: 48px;
+      text-transform: uppercase;
+    }
+
+    .slider-val {
+      font-size: 0.7rem;
+      color: var(--cyan);
+      min-width: 34px;
+      text-align: right;
+    }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      flex: 1;
+      height: 5px;
+      border-radius: 4px;
+      background: #1a1a2e;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan);
+      cursor: pointer;
+    }
+
+    select {
+      background: #0a0a18;
+      border: 1.5px solid var(--border);
+      color: var(--cyan);
+      border-radius: 6px;
+      padding: 5px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.7rem;
+      width: 100%;
+      outline: none;
+    }
+
+    .persona-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      width: 100%;
+    }
+
+    .persona-row input {
+      flex: 1;
+      background: #0a0a18;
+      border: 1.5px solid #9b59ff33;
+      color: var(--purple);
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.72rem;
+      outline: none;
+    }
+
+    .persona-row input:focus {
+      border-color: var(--purple);
+    }
+
+    .persona-row label {
+      font-size: 0.58rem;
+      color: var(--dim);
+      letter-spacing: 1px;
+      white-space: nowrap;
+    }
+
+    .eq-wrap {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 3px;
+      height: 52px;
+      width: 100%;
+    }
+
+    .eq-bar {
+      flex: 1;
+      max-width: 22px;
+      border-radius: 3px 3px 0 0;
+      background: linear-gradient(to top, var(--cyan), #0066ff);
+      box-shadow: 0 0 6px #00ffe755;
+      min-height: 3px;
+      transition: height 0.08s;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 10px 26px;
+      border-radius: 50px;
+      border: none;
+      font-family: 'Courier New', monospace;
+      font-size: 0.82rem;
+      letter-spacing: 3px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.15s;
+    }
+
+    #speak-btn {
+      background: linear-gradient(135deg, var(--cyan), #0088ff);
+      color: #07070f;
+      font-weight: bold;
+      box-shadow: 0 0 18px #00ffe755;
+    }
+
+    #speak-btn:hover {
+      box-shadow: 0 0 34px #00ffe7bb;
+      transform: scale(1.04);
+    }
+
+    #speak-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    #stop-btn {
+      background: transparent;
+      color: var(--red);
+      border: 1.5px solid var(--red);
+    }
+
+    #stop-btn:hover {
+      background: #ff445511;
+    }
+
+    #ai-btn {
+      background: linear-gradient(135deg, var(--purple), var(--pink));
+      color: #fff;
+      font-weight: bold;
+      box-shadow: 0 0 18px #9b59ff55;
+    }
+
+    #ai-btn:hover {
+      box-shadow: 0 0 30px #9b59ffaa;
+      transform: scale(1.04);
+    }
+
+    #ai-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    #music-play-btn {
+      background: linear-gradient(135deg, var(--yellow), #ff8800);
+      color: #07070f;
+      font-weight: bold;
+    }
+
+    #music-play-btn:hover {
+      box-shadow: 0 0 26px #ffe600aa;
+      transform: scale(1.04);
+    }
+
+    #music-stop-btn {
+      background: transparent;
+      color: var(--yellow);
+      border: 1.5px solid var(--yellow);
+    }
+
+    #tts-feedback {
+      text-align: center;
+      font-size: 0.78rem;
+      letter-spacing: 2px;
+      min-height: 18px;
+      padding: 4px;
+    }
+
+    .progress-bar-wrap {
+      width: 100%;
+      background: #1a1a2e;
+      border-radius: 4px;
+      height: 4px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--purple), var(--pink));
+      transition: width 0.3s;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>&#127908; AI TTS Studio</h1>
+    <div class="api-row">
+      <span class="api-label">OPENAI KEY</span>
+      <input type="password" id="api-key" placeholder="sk-..." />
+    </div>
+  </header>
+  <div class="board">
+    <!-- Text Input -->
+    <div class="full panel">
+      <div class="panel-title">Input / Generated Text</div>
+      <textarea id="tts-input" placeholder="Type your text, or enter a topic and click AI Generate..."></textarea>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="ai-progress"></div>
+      </div>
+    </div>
+    <!-- AI Generator -->
+    <div class="panel span2">
+      <div class="panel-title">&#x2736; AI Content Generator</div>
+      <div class="ai-grid">
+        <div class="ai-chip active" data-ai="story">&#128214; STORY</div>
+        <div class="ai-chip" data-ai="news">&#128238; NEWS</div>
+        <div class="ai-chip" data-ai="song">&#127911; SONG</div>
+        <div class="ai-chip" data-ai="emotional">&#10084; EMOTIONAL</div>
+        <div class="ai-chip" data-ai="mimic">&#127917; MIMIC</div>
+        <div class="ai-chip" data-ai="poem">&#127774; POEM</div>
+        <div class="ai-chip" data-ai="comedy">&#128514; COMEDY</div>
+        <div class="ai-chip" data-ai="horror">&#128128; HORROR</div>
+      </div>
+      <div class="persona-row">
+        <label>MIMIC AS:</label>
+        <input type="text" id="persona-input" placeholder="Morgan Freeman, Yoda, Shakespeare..." />
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="ai-btn">&#x2736; AI Generate</button>
+      </div>
+    </div>
+    <!-- Emotions -->
+    <div class="panel">
+      <div class="panel-title">Emotional Mode</div>
+      <div class="emo-grid">
+        <div class="emo-chip active" data-emo="neutral">&#128528; NEUTRAL</div>
+        <div class="emo-chip" data-emo="happy">&#128512; HAPPY</div>
+        <div class="emo-chip" data-emo="sad">&#128546; SAD</div>
+        <div class="emo-chip" data-emo="angry">&#128544; ANGRY</div>
+        <div class="emo-chip" data-emo="scared">&#128561; SCARED</div>
+        <div class="emo-chip" data-emo="romantic">&#128149; ROMANTIC</div>
+        <div class="emo-chip" data-emo="excited">&#129321; EXCITED</div>
+        <div class="emo-chip" data-emo="calm">&#129393; CALM</div>
+      </div>
+    </div>
+    <!-- Speaking Style -->
+    <div class="panel span2">
+      <div class="panel-title">Speaking Style</div>
+      <div class="style-grid">
+        <div class="chip active" data-style="talk">TALK</div>
+        <div class="chip" data-style="sing">SING</div>
+        <div class="chip" data-style="narrate">NARRATE</div>
+        <div class="chip" data-style="stutter">STUTTER</div>
+        <div class="chip" data-style="robot">ROBOT</div>
+        <div class="chip" data-style="whisper">WHISPER</div>
+        <div class="chip" data-style="chipmunk">CHIPMUNK</div>
+        <div class="chip" data-style="giant">GIANT</div>
+        <div class="chip" data-style="slowmo">SLOW-MO</div>
+        <div class="chip" data-style="excited-spk">EXCITED</div>
+        <div class="chip" data-style="sing-stutter">SING+STUT</div>
+        <div class="chip" data-style="narrate-slow">NARR+SLOW</div>
+      </div>
+    </div>
+    <!-- Rotary Controls -->
+    <div class="panel">
+      <div class="panel-title">Rotary Controls</div>
+      <div class="knobs-row">
+        <div class="knob-wrap">
+          <div class="knob-label">Pitch</div>
+          <div class="knob" id="pitch-knob">
+            <div class="knob-dot"></div>
+          </div>
+          <div class="knob-val" id="pitch-knob-val">1.00</div>
+        </div>
+        <div class="knob-wrap">
+          <div class="knob-label">Rate</div>
+          <div class="knob" id="rate-knob">
+            <div class="knob-dot"></div>
+          </div>
+          <div class="knob-val" id="rate-knob-val">1.00</div>
+        </div>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">Pitch</span>
+        <input type="range" id="pitch-range" min="0" max="2" value="1" step="0.05">
+        <span class="slider-val" id="pitch-slider-val">1.00</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">Rate</span>
+        <input type="range" id="rate-range" min="0.3" max="2.5" value="1" step="0.05">
+        <span class="slider-val" id="rate-slider-val">1.00</span>
+      </div>
+    </div>
+    <!-- Voice & Mix -->
+    <div class="panel">
+      <div class="panel-title">Voice &amp; Mix</div>
+      <select id="voice-select"></select>
+      <div class="slider-row">
+        <span class="slider-label">Volume</span>
+        <input type="range" id="volume-range" min="0" max="1" value="1" step="0.05">
+        <span class="slider-val" id="volume-val">1.00</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">Stutter</span>
+        <input type="range" id="stutter-range" min="1" max="5" value="2" step="1">
+        <span class="slider-val" id="stutter-val">2x</span>
+      </div>
+    </div>
+    <!-- Music Composer -->
+    <div class="panel">
+      <div class="panel-title">&#127931; Music Composer</div>
+      <div class="music-grid">
+        <div class="music-chip active" data-genre="pop">POP</div>
+        <div class="music-chip" data-genre="jazz">JAZZ</div>
+        <div class="music-chip" data-genre="dramatic">EPIC</div>
+        <div class="music-chip" data-genre="lofi">LO-FI</div>
+        <div class="music-chip" data-genre="horror">HORROR</div>
+        <div class="music-chip" data-genre="happy">HAPPY</div>
+        <div class="music-chip" data-genre="sad">SAD</div>
+        <div class="music-chip" data-genre="ambient">AMBIENT</div>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">BPM</span>
+        <input type="range" id="bpm-range" min="40" max="180" value="100" step="1">
+        <span class="slider-val" id="bpm-val">100</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="music-play-btn">&#9836; Play</button>
+        <button class="btn" id="music-stop-btn">&#9632; Stop</button>
+      </div>
+    </div>
+    <!-- EQ Visualizer -->
+    <div class="panel span2">
+      <div class="panel-title">EQ Visualizer</div>
+      <div class="eq-wrap" id="eq-wrap"></div>
+    </div>
+    <!-- TTS Buttons -->
+    <div class="full btn-row">
+      <button class="btn" id="speak-btn">&#9654; Speak</button>
+      <button class="btn" id="stop-btn">&#9632; Stop</button>
+    </div>
+    <div class="full" id="tts-feedback"></div>
+  </div>
+  <script src="./renderer.js"></script>
+</body>
+
+</html>
